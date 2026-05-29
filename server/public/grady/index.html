@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Grady Games</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:linear-gradient(160deg,#1a0a2e 0%,#2d0a3e 40%,#1a0a1e 100%);
+  min-height:100vh;color:#fff;
+  -webkit-tap-highlight-color:transparent;
+}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 10px;
+  background:rgba(0,0,0,0.3);
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  position:sticky;top:0;z-index:10;
+  backdrop-filter:blur(12px);
+}
+.logo{font-size:22px;font-weight:900;letter-spacing:1px;
+  background:linear-gradient(90deg,#f59e0b,#ef4444,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.coin-box{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);
+  border-radius:20px;padding:6px 12px;
+}
+.coin-icon{font-size:18px;}
+.coin-val{font-size:15px;font-weight:700;color:#fcd34d;}
+.marquee-wrap{
+  background:rgba(245,158,11,0.12);border-bottom:1px solid rgba(245,158,11,0.2);
+  padding:7px 16px;overflow:hidden;
+}
+.marquee{
+  white-space:nowrap;animation:marquee 18s linear infinite;
+  font-size:12px;color:#fcd34d;display:inline-block;
+}
+@keyframes marquee{from{transform:translateX(100vw);}to{transform:translateX(-100%);}}
+.tabs{display:flex;gap:4px;padding:14px 16px 8px;}
+.tab{
+  padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;
+  cursor:pointer;border:none;transition:all 0.2s;
+}
+.tab.active{background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;}
+.tab.inactive{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);}
+.grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:12px;padding:4px 12px 24px;
+}
+.card{
+  border-radius:14px;overflow:hidden;cursor:pointer;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.08);
+  transition:transform 0.15s,box-shadow 0.15s;
+  position:relative;
+  text-decoration:none;display:block;
+}
+.card:active{transform:scale(0.96);}
+.card-img{
+  width:100%;aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+  font-size:52px;
+  background:linear-gradient(135deg,#3b0764,#7c3aed 50%,#2563eb);
+}
+.badge{
+  position:absolute;top:6px;left:6px;
+  font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px;
+  letter-spacing:0.5px;
+}
+.badge-new{background:#16a34a;color:#fff;}
+.badge-hot{background:#ef4444;color:#fff;}
+.card-name{
+  padding:7px 6px 8px;text-align:center;
+  font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.coming-soon{
+  opacity:0.4;cursor:not-allowed;
+}
+.coming-soon .card-img{
+  background:linear-gradient(135deg,#1e1e2e,#2d2d4e);
+}
+.coming-label{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);
+  background:rgba(0,0,0,0.4);
+  border-radius:14px;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🎮 GRADY</div>
+  <div class="coin-box">
+    <span class="coin-icon">🪙</span>
+    <span class="coin-val" id="balance">-</span>
+  </div>
+</div>
+
+<div class="marquee-wrap">
+  <div class="marquee">⭐ Selamat Datang di Grady Games! Spin Kincir Angin dan menangkan hadiah besar! &nbsp;&nbsp;&nbsp; 🏆 Jackpot menanti kamu! &nbsp;&nbsp;&nbsp; 🎰 Main sekarang, raih kemenangan!</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active">🔥 Semua</button>
+  <button class="tab inactive">⭐ Favorit</button>
+</div>
+
+<div class="grid">
+
+  <!-- Game 1: Kincir Angin (ACTIVE) -->
+  <a class="card" id="ferris-link" href="#" onclick="openGame('ferriswheel')">
+    <div class="badge badge-new">NEW</div>
+    <div class="card-img">🎡</div>
+    <div class="card-name">Kincir Angin</div>
+  </a>
+
+  <!-- Coming soon placeholders -->
+  <div class="card coming-soon">
+    <div class="badge badge-hot">HOT</div>
+    <div class="card-img">🎰</div>
+    <div class="coming-label">Soon</div>
+    <div class="card-name">Slot Emas</div>
+  </div>
+
+  <div class="card coming-soon">
+    <div class="badge badge-new">NEW</div>
+    <div class="card-img">🃏</div>
+    <div class="coming-label">Soon</div>
+    <div class="card-name">Kartu Tarot</div>
+  </div>
+
+  <div class="card coming-soon">
+    <div class="badge badge-new">NEW</div>
+    <div class="card-img">🎲</div>
+    <div class="coming-label">Soon</div>
+    <div class="card-name">Dadu Lucky</div>
+  </div>
+
+  <div class="card coming-soon">
+    <div class="badge badge-new">NEW</div>
+    <div class="card-img">⚽</div>
+    <div class="coming-label">Soon</div>
+    <div class="card-name">Sepak Bola</div>
+  </div>
+
+  <div class="card coming-soon">
+    <div class="badge badge-new">NEW</div>
+    <div class="card-img">🐉</div>
+    <div class="coming-label">Soon</div>
+    <div class="card-name">Naga vs Harimau</div>
+  </div>
+
+</div>
+
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+
+function openGame(name) {
+  location.href = `/games/grady/${name}?token=${encodeURIComponent(token)}`;
+}
+
+async function loadBalance() {
+  try {
+    const r = await fetch('/api/games/grady/balance', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (r.ok) {
+      const d = await r.json();
+      document.getElementById('balance').textContent = formatNum(d.balance);
+    }
+  } catch(e) {}
+}
+
+function formatNum(n) {
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(1).replace('.0','') + 'M';
+  if (n >= 1_000) return (n/1_000).toFixed(1).replace('.0','') + 'K';
+  return String(n);
+}
+
+loadBalance();
+</script>
+</body>
+</html>

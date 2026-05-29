@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lava Slot</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;}
+
+/* ── LOADING ── */
+#screen-load{
+  position:fixed;inset:0;z-index:50;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;
+  padding-bottom:55px;background:#0a0010;
+}
+.load-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;z-index:0;}
+.load-front{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;width:78%;}
+.load-title{
+  font-size:46px;font-weight:900;letter-spacing:5px;text-align:center;
+  background:linear-gradient(180deg,#fff5a0 0%,#ffb800 35%,#ff4400 80%,#cc2200 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 2px 14px rgba(255,100,0,0.9));
+}
+.load-sub{color:rgba(255,200,100,0.8);font-size:12px;font-weight:700;letter-spacing:3px;}
+.load-bar-wrap{width:100%;height:7px;background:rgba(255,255,255,0.12);border-radius:4px;overflow:hidden;border:1px solid rgba(255,100,0,0.3);}
+.load-bar{height:100%;width:0%;background:linear-gradient(90deg,#cc2200,#ff6600,#ffcc00);border-radius:4px;transition:width 0.1s linear;}
+.load-pct{color:rgba(255,200,100,0.7);font-size:10px;font-weight:700;letter-spacing:1px;}
+
+/* ── GAME SCREEN ── */
+#screen-game{
+  position:fixed;inset:0;z-index:40;display:none;flex-direction:column;
+  background:linear-gradient(180deg,#150530 0%,#2a0e54 30%,#1a3020 65%,#0d1a0d 100%);
+}
+#screen-game::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse at 0% 85%,rgba(0,100,10,0.5) 0%,transparent 45%),
+    radial-gradient(ellipse at 100% 85%,rgba(0,90,10,0.5) 0%,transparent 45%),
+    radial-gradient(ellipse at 50% 10%,rgba(90,0,150,0.35) 0%,transparent 55%);
+}
+
+/* ── TOOLBAR ── */
+.toolbar{
+  position:relative;z-index:5;display:flex;align-items:center;gap:8px;
+  padding:7px 10px 5px;background:rgba(0,0,0,0.35);
+  border-bottom:1px solid rgba(255,180,0,0.2);flex-shrink:0;
+}
+.tb-btn{
+  width:36px;height:36px;border-radius:18px;border:none;cursor:pointer;
+  background:rgba(255,255,255,0.1);border:1.5px solid rgba(255,255,255,0.2);
+  font-size:16px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;
+}
+.tb-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.tb-title{
+  font-size:22px;font-weight:900;letter-spacing:4px;
+  background:linear-gradient(180deg,#ffe066,#ff8800,#cc3300);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 8px rgba(255,100,0,0.6));
+}
+.jp-bar-wrap{width:100%;height:5px;background:rgba(0,0,0,0.4);border-radius:3px;overflow:hidden;border:1px solid rgba(255,180,0,0.2);}
+.jp-bar{height:100%;width:0%;background:linear-gradient(90deg,#cc2200,#ff6600,#ffdd00);border-radius:3px;transition:width 0.6s ease;}
+.jp-pct{font-size:9px;color:rgba(255,200,80,0.65);font-weight:700;text-align:center;}
+
+/* ── MACHINE ── */
+.reels-outer{
+  position:relative;z-index:5;flex:1;
+  display:flex;align-items:center;justify-content:center;
+  padding:10px 12px;min-height:0;
+}
+.machine-wrap{
+  width:100%;max-width:380px;
+  background:linear-gradient(180deg,#2c1800 0%,#1a1000 100%);
+  border:3px solid #c8860a;border-radius:14px;
+  box-shadow:0 0 28px rgba(255,140,0,0.35),inset 0 0 14px rgba(0,0,0,0.7);
+  overflow:hidden;position:relative;padding:10px 8px 8px;
+}
+.machine-wrap::before{
+  content:'';position:absolute;inset:3px;border:1.5px solid rgba(255,200,50,0.2);
+  border-radius:12px;pointer-events:none;z-index:1;
+}
+
+/* Reel grid — 5 columns, seamless */
+.reels-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  gap:4px;position:relative;
+}
+/* Center payline highlight */
+.payline{
+  position:absolute;left:0;right:0;pointer-events:none;z-index:20;
+  border-top:2px solid rgba(255,220,0,0.55);
+  border-bottom:2px solid rgba(255,220,0,0.55);
+  box-shadow:0 0 12px rgba(255,215,0,0.3);
+}
+
+/* Individual reel — no visible cell borders, just overflow clip */
+.reel{
+  border-radius:5px;overflow:hidden;
+  background:#0a0808;position:relative;
+}
+.reel.win-flash{
+  box-shadow:0 0 18px rgba(255,215,0,0.7);
+  animation:rfl 0.4s ease-in-out infinite;
+}
+@keyframes rfl{0%,100%{filter:brightness(1);}50%{filter:brightness(1.7);}}
+
+/* The strip scrolls vertically — GPU only (transform) */
+.reel-strip{
+  display:flex;flex-direction:column;
+  will-change:transform;
+  transform:translateZ(0);
+}
+.reel-strip.spinning{
+  animation:rspin var(--sdur,0.13s) linear infinite;
+}
+@keyframes rspin{
+  0%  {transform:translateZ(0) translateY(0);}
+  100%{transform:translateZ(0) translateY(var(--sloop));}
+}
+
+/* Each symbol cell */
+.sym-cell{
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%, rgba(40,20,10,0.5) 0%, rgba(0,0,0,0.85) 100%);
+}
+.sym-cell svg{width:80%;height:80%;display:block;}
+
+/* ── BOTTOM PANEL ── */
+.btm{
+  position:relative;z-index:5;flex-shrink:0;
+  background:linear-gradient(180deg,#2a0a5e,#1a0445);
+  border-top:2.5px solid rgba(255,180,0,0.35);
+  padding:8px 10px 10px;
+}
+.result-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.r-box{
+  flex:1;background:rgba(0,0,0,0.45);border-radius:8px;
+  border:1.5px solid rgba(255,180,0,0.2);
+  padding:5px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;
+}
+.r-lbl{font-size:8px;font-weight:700;color:rgba(255,200,100,0.65);letter-spacing:1px;text-transform:uppercase;}
+.r-val{font-size:18px;font-weight:900;color:#FFD700;line-height:1.1;}
+
+.spin-btn{
+  flex:0 0 94px;height:58px;border-radius:12px;border:none;cursor:pointer;
+  background:linear-gradient(180deg,#2ecc1a,#188a0a,#0f5a07);
+  border:2.5px solid #60ee48;
+  color:#fff;font-size:19px;font-weight:900;letter-spacing:2px;
+  box-shadow:0 4px 20px rgba(0,200,0,0.4),inset 0 1px 0 rgba(255,255,255,0.15);
+  transition:opacity 0.12s,transform 0.1s;
+  text-shadow:0 1px 5px rgba(0,0,0,0.5);
+}
+.spin-btn:active{transform:scale(0.93);}
+.spin-btn:disabled{opacity:0.4;}
+.spin-btn.auto-on{background:linear-gradient(180deg,#e06600,#943000,#6a2000);border-color:#ffaa44;box-shadow:0 4px 20px rgba(255,100,0,0.4);}
+
+.bet-row{display:flex;align-items:center;gap:5px;}
+.bad-btn{
+  width:38px;height:34px;border-radius:8px;border:none;cursor:pointer;
+  background:rgba(255,255,255,0.1);border:1.5px solid rgba(255,255,255,0.25);
+  color:#fff;font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;
+}
+.bad-btn:active{transform:scale(0.88);}
+.bet-coin-wrap{
+  flex:1;height:34px;background:rgba(0,0,0,0.45);
+  border:1.5px solid rgba(255,180,0,0.3);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.bet-coin-ico{font-size:15px;}
+.bet-coin-val{color:#FFD700;font-size:14px;font-weight:800;}
+.mode-btn{
+  flex:1;height:34px;border-radius:8px;border:none;cursor:pointer;
+  background:rgba(0,0,0,0.4);border:1.5px solid rgba(255,255,255,0.15);
+  color:rgba(255,255,255,0.55);font-size:9.5px;font-weight:700;letter-spacing:0.5px;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.mode-btn.on{background:rgba(255,100,0,0.25);border-color:#ff6600;color:#ffa060;}
+.mdot{width:10px;height:10px;border-radius:5px;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.25);flex-shrink:0;}
+.mdot.on{background:#ff6600;border-color:#ffaa44;box-shadow:0 0 5px #ff6600;}
+
+/* ── MODALS ── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:none;align-items:center;justify-content:center;padding:18px;}
+.modal-ov.show{display:flex;}
+.modal-box{
+  background:linear-gradient(180deg,#2a0a5e,#180440);
+  border:2px solid rgba(255,180,0,0.45);border-radius:20px;
+  padding:18px;width:100%;max-width:340px;max-height:82vh;overflow-y:auto;
+}
+.modal-ttl{font-size:17px;font-weight:900;color:#FFD700;text-align:center;margin-bottom:12px;letter-spacing:2px;}
+.modal-cls{position:sticky;top:0;float:right;width:28px;height:28px;border-radius:14px;border:none;background:rgba(255,255,255,0.1);color:#fff;font-size:14px;cursor:pointer;}
+
+/* Paytable */
+.pt-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
+.pt-sym{width:40px;height:40px;flex-shrink:0;}
+.pt-sym svg{width:100%;height:100%;}
+.pt-name{flex:1;font-size:12px;font-weight:700;color:rgba(255,255,255,0.8);}
+.pt-x3{font-size:11px;font-weight:900;color:#a0e0ff;min-width:52px;text-align:center;}
+.pt-x5{font-size:11px;font-weight:900;color:#FFD700;min-width:52px;text-align:center;}
+
+/* History */
+.hist-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:12px;}
+.hist-syms{display:flex;gap:3px;flex-shrink:0;}
+.hist-syms .hs{width:22px;height:22px;}
+.hist-syms .hs svg{width:100%;height:100%;}
+.hist-info{flex:1;color:rgba(255,255,255,0.65);}
+.hist-net{font-weight:900;font-size:13px;}
+.hpos{color:#66ee55;} .hneg{color:#ff6060;}
+
+/* Win popup */
+.winpop{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:300;display:none;align-items:center;justify-content:center;}
+.winpop.show{display:flex;}
+.winbox{
+  background:linear-gradient(180deg,#2a0a00,#0d0900);
+  border:2.5px solid #FFD700;border-radius:24px;padding:22px 28px;text-align:center;
+  box-shadow:0 0 60px rgba(255,200,0,0.45);
+  animation:popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes popIn{from{transform:scale(0.55);opacity:0;}to{transform:scale(1);opacity:1;}}
+.wp-syms{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+.wp-syms .ws{width:44px;height:44px;}
+.wp-syms .ws svg{width:100%;height:100%;}
+.wp-count{font-size:13px;color:rgba(255,200,100,0.8);font-weight:700;margin-bottom:4px;}
+.wp-amt{font-size:44px;font-weight:900;color:#FFD700;text-shadow:0 0 24px rgba(255,215,0,0.7);}
+.wp-ok{margin-top:14px;padding:10px 36px;border:none;border-radius:22px;background:linear-gradient(90deg,#c8960a,#FFD700);color:#1a0800;font-size:15px;font-weight:900;cursor:pointer;}
+
+.toast{
+  position:fixed;top:46%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.9);color:#fff;padding:10px 22px;border-radius:22px;
+  font-size:13px;font-weight:700;z-index:500;pointer-events:none;
+  animation:toastKf 2.2s forwards;
+}
+@keyframes toastKf{0%{opacity:0;transform:translate(-50%,-60%);}12%{opacity:1;transform:translate(-50%,-50%);}80%{opacity:1;}100%{opacity:0;}}
+#conf-cv{position:fixed;inset:0;pointer-events:none;z-index:290;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="screen-load">
+  <img class="load-bg-img" src="bg-load.jpg" alt="">
+  <div class="load-front">
+    <div class="load-title">LAVA SLOT</div>
+    <div class="load-sub">JACKPOT MENANTI</div>
+    <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
+    <div class="load-pct" id="load-pct">0%</div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="screen-game">
+  <div class="toolbar">
+    <button class="tb-btn" onclick="openPT()">?</button>
+    <button class="tb-btn" id="vol-btn" onclick="toggleVol()">🔊</button>
+    <div class="tb-center">
+      <div class="tb-title">LAVA SLOT</div>
+      <div class="jp-bar-wrap"><div class="jp-bar" id="jp-bar"></div></div>
+      <div class="jp-pct" id="jp-pct">0%</div>
+    </div>
+    <button class="tb-btn" onclick="openHist()">⏱</button>
+  </div>
+
+  <div class="reels-outer">
+    <div class="machine-wrap">
+      <div class="reels-grid" id="reels-grid">
+        <!-- built by JS -->
+      </div>
+      <div class="payline" id="payline"></div>
+    </div>
+  </div>
+
+  <div class="btm">
+    <div class="result-row">
+      <div class="r-box">
+        <div class="r-lbl">TOTAL TARUHAN</div>
+        <div class="r-val" id="bet-disp">10K</div>
+      </div>
+      <div class="r-box">
+        <div class="r-lbl">MENANG</div>
+        <div class="r-val" id="win-disp">0</div>
+      </div>
+      <button class="spin-btn" id="spin-btn" onclick="doSpin()">PUTAR</button>
+    </div>
+    <div class="bet-row">
+      <button class="bad-btn" onclick="adjBet(-1)">−</button>
+      <button class="bad-btn" onclick="adjBet(1)">+</button>
+      <div class="bet-coin-wrap">
+        <span class="bet-coin-ico">🪙</span>
+        <span class="bet-coin-val" id="coin-val">10</span>
+      </div>
+      <button class="mode-btn" id="fast-btn" onclick="toggleFast()">
+        <span class="mdot" id="fast-dot"></span>CEPAT
+      </button>
+      <button class="mode-btn" id="auto-btn" onclick="toggleAuto()">
+        <span class="mdot" id="auto-dot"></span>OTOMATIS
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Paytable -->
+<div class="modal-ov" id="pt-ov">
+  <div class="modal-box">
+    <button class="modal-cls" onclick="closePT()">✕</button>
+    <div class="modal-ttl">INFO BAYARAN</div>
+    <div style="display:flex;justify-content:space-between;padding:0 4px 6px;font-size:9px;font-weight:700;color:rgba(255,200,100,0.6);">
+      <span style="width:50px">SIMBOL</span><span style="flex:1"></span><span style="min-width:52px;text-align:center">3 COCOK</span><span style="min-width:52px;text-align:center">5 COCOK</span>
+    </div>
+    <div id="pt-rows"></div>
+  </div>
+</div>
+
+<!-- History -->
+<div class="modal-ov" id="hist-ov">
+  <div class="modal-box">
+    <button class="modal-cls" onclick="closeHist()">✕</button>
+    <div class="modal-ttl">RIWAYAT SPIN</div>
+    <div id="hist-rows"><div style="color:rgba(255,255,255,0.35);text-align:center;padding:20px">Belum ada riwayat</div></div>
+  </div>
+</div>
+
+<!-- Win popup -->
+<div class="winpop" id="winpop">
+  <div class="winbox">
+    <div class="wp-syms" id="wp-syms"></div>
+    <div class="wp-count" id="wp-count"></div>
+    <div class="wp-amt" id="wp-amt"></div>
+    <button class="wp-ok" onclick="closeWin()">LANJUT</button>
+  </div>
+</div>
+
+<canvas id="conf-cv"></canvas>
+
+<script>
+// ─── SVG Symbol Art (no emoji) ────────────────────────────────────────────────
+const SVG = {
+  wild:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="wg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fffae0"/><stop offset="40%" stop-color="#fff"/><stop offset="60%" stop-color="#ffe060"/><stop offset="100%" stop-color="#c8a000"/></linearGradient></defs>
+    <polygon points="30,4 56,22 48,56 12,56 4,22" fill="url(#wg)" stroke="#FFD700" stroke-width="1.5"/>
+    <polygon points="30,4 56,22 30,24" fill="rgba(255,255,255,0.35)"/>
+    <polygon points="30,4 4,22 30,24" fill="rgba(255,255,255,0.18)"/>
+    <line x1="4" y1="22" x2="56" y2="22" stroke="rgba(255,200,0,0.3)" stroke-width="1"/>
+    <text x="30" y="46" text-anchor="middle" font-size="10" font-weight="900" fill="#cc8800" font-family="Arial">WILD</text>
+  </svg>`,
+
+  toucan:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="35" cy="40" rx="15" ry="17" fill="#110030"/>
+    <ellipse cx="37" cy="44" rx="9" ry="11" fill="#f8f2a0"/>
+    <circle cx="27" cy="22" r="13" fill="#1a0044"/>
+    <circle cx="27" cy="19" r="7" fill="#33aa00"/>
+    <circle cx="27" cy="19" r="5" fill="#007700"/>
+    <circle cx="27" cy="19" r="2.5" fill="#000"/>
+    <circle cx="28.5" cy="17.5" r="1.2" fill="#fff"/>
+    <path d="M21 23 Q8 19 5 25 Q8 32 21 29 Z" fill="#ffaa00"/>
+    <path d="M21 29 Q8 31 6 36 Q10 33 21 31 Z" fill="#ff6600"/>
+    <ellipse cx="36" cy="37" rx="11" ry="14" fill="#1d0050"/>
+    <path d="M32 54 Q28 60 34 60 Q40 60 40 55 Z" fill="#440088"/>
+    <line x1="28" y1="57" x2="25" y2="60" stroke="#aa8800" stroke-width="2"/>
+    <line x1="33" y1="57" x2="36" y2="60" stroke="#aa8800" stroke-width="2"/>
+  </svg>`,
+
+  flower:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="cg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffe060"/><stop offset="100%" stop-color="#ff3300"/></radialGradient></defs>
+    <ellipse cx="30" cy="10" rx="7" ry="14" fill="#ff3300" opacity="0.9"/>
+    <ellipse cx="30" cy="10" rx="7" ry="14" fill="#ff5500" opacity="0.9" transform="rotate(60,30,30)"/>
+    <ellipse cx="30" cy="10" rx="7" ry="14" fill="#ff3300" opacity="0.9" transform="rotate(120,30,30)"/>
+    <ellipse cx="30" cy="10" rx="7" ry="14" fill="#ff6600" opacity="0.9" transform="rotate(180,30,30)"/>
+    <ellipse cx="30" cy="10" rx="7" ry="14" fill="#ff3300" opacity="0.9" transform="rotate(240,30,30)"/>
+    <ellipse cx="30" cy="10" rx="7" ry="14" fill="#ff5500" opacity="0.9" transform="rotate(300,30,30)"/>
+    <circle cx="30" cy="30" r="11" fill="url(#cg)"/>
+    <circle cx="30" cy="30" r="5.5" fill="#ffe880"/>
+    <circle cx="30" cy="23" r="2.2" fill="#ff8800"/>
+    <circle cx="25.5" cy="25.5" r="2" fill="#ff8800"/>
+    <circle cx="34.5" cy="25.5" r="2" fill="#ff8800"/>
+  </svg>`,
+
+  turtle:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="tsg" cx="50%" cy="45%" r="55%"><stop offset="0%" stop-color="#55ffbb"/><stop offset="100%" stop-color="#005533"/></radialGradient></defs>
+    <ellipse cx="30" cy="32" rx="20" ry="16" fill="url(#tsg)" stroke="#007744" stroke-width="1.5"/>
+    <ellipse cx="30" cy="32" rx="14" ry="10" fill="none" stroke="#00bb66" stroke-width="1.5"/>
+    <ellipse cx="30" cy="32" rx="7" ry="5" fill="rgba(255,255,255,0.12)"/>
+    <path d="M30 18 Q34 10 38 13 Q35 18 30 18 Z" fill="#33cc77"/>
+    <ellipse cx="30" cy="14" rx="7" ry="6" fill="#33cc77"/>
+    <circle cx="27" cy="12" r="2" fill="#111"/>
+    <circle cx="27.8" cy="11.2" r="0.8" fill="#fff"/>
+    <ellipse cx="12" cy="28" rx="7" ry="3.5" fill="#33cc77" transform="rotate(-20,12,28)"/>
+    <ellipse cx="48" cy="28" rx="7" ry="3.5" fill="#33cc77" transform="rotate(20,48,28)"/>
+    <ellipse cx="14" cy="42" rx="6.5" ry="3" fill="#33cc77" transform="rotate(15,14,42)"/>
+    <ellipse cx="46" cy="42" rx="6.5" ry="3" fill="#33cc77" transform="rotate(-15,46,42)"/>
+    <ellipse cx="30" cy="48" rx="4" ry="5.5" fill="#33cc77"/>
+  </svg>`,
+
+  tiki:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="tkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dd9900"/><stop offset="100%" stop-color="#774400"/></linearGradient></defs>
+    <rect x="13" y="8" rx="6" width="34" height="48" fill="url(#tkg)"/>
+    <rect x="17" y="4" width="5" height="9" rx="2" fill="#cc8800"/>
+    <rect x="27" y="2" width="6" height="11" rx="2" fill="#aa6600"/>
+    <rect x="38" y="4" width="5" height="9" rx="2" fill="#cc8800"/>
+    <ellipse cx="22" cy="22" rx="7" ry="8" fill="#1a0a00"/>
+    <ellipse cx="38" cy="22" rx="7" ry="8" fill="#1a0a00"/>
+    <circle cx="22" cy="22" r="3.5" fill="#ee2200"/>
+    <circle cx="38" cy="22" r="3.5" fill="#ee2200"/>
+    <circle cx="23" cy="21" r="1.5" fill="#fff"/>
+    <circle cx="39" cy="21" r="1.5" fill="#fff"/>
+    <rect x="27" y="28" width="7" height="3.5" rx="1.5" fill="#662200"/>
+    <path d="M15 38 Q30 50 45 38" fill="#110000"/>
+    <path d="M17 38 Q30 46 43 38 Q30 44 17 38 Z" fill="#cc2200"/>
+    <rect x="21" y="38" width="5" height="5.5" rx="1" fill="#fff"/>
+    <rect x="30" y="38" width="5" height="5.5" rx="1" fill="#fff"/>
+    <rect x="15" y="51" width="3.5" height="5" rx="1" fill="#773300"/>
+    <rect x="22" y="52" width="3" height="4" rx="1" fill="#773300"/>
+    <rect x="35" y="51" width="3.5" height="5" rx="1" fill="#773300"/>
+    <rect x="42" y="52" width="3" height="4" rx="1" fill="#773300"/>
+  </svg>`,
+
+  a:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff5a0"/><stop offset="45%" stop-color="#ff7700"/><stop offset="100%" stop-color="#bb1100"/></linearGradient></defs>
+    <text x="30" y="52" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="54" font-weight="900" fill="url(#ag)" stroke="#aa2200" stroke-width="2.5" paint-order="stroke">A</text>
+    <path d="M8 57 Q30 50 52 57 Q40 53 30 55 Q20 53 8 57 Z" fill="#ff4400" opacity="0.45"/>
+  </svg>`,
+
+  k:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffbbbb"/><stop offset="45%" stop-color="#cc0000"/><stop offset="100%" stop-color="#660000"/></linearGradient></defs>
+    <text x="30" y="52" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="54" font-weight="900" fill="url(#kg)" stroke="#660000" stroke-width="2.5" paint-order="stroke">K</text>
+  </svg>`,
+
+  fire:`<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="fg" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ff0000"/><stop offset="35%" stop-color="#ff6600"/><stop offset="65%" stop-color="#ffaa00"/><stop offset="100%" stop-color="#fff5a0"/></linearGradient></defs>
+    <path d="M30 3 Q39 14 42 25 Q47 18 44 29 Q50 22 46 37 Q48 46 39 53 Q34 57 30 57 Q26 57 21 53 Q12 46 14 37 Q10 22 16 29 Q13 18 18 25 Q21 14 30 3 Z" fill="url(#fg)"/>
+    <path d="M30 15 Q36 24 38 33 Q41 28 39 37 Q40 44 34 51 Q30 53 26 51 Q20 44 21 37 Q19 28 22 33 Q24 24 30 15 Z" fill="#ffcc00" opacity="0.65"/>
+    <ellipse cx="30" cy="43" rx="6" ry="8" fill="#fff8a0" opacity="0.45"/>
+  </svg>`
+};
+
+// Symbol definitions
+const SYMS = [
+  { id:'wild',   svg:SVG.wild,   name:'Wild',    w:2,  m3:100, m5:500 },
+  { id:'toucan', svg:SVG.toucan, name:'Toucan',  w:8,  m3:15,  m5:80  },
+  { id:'flower', svg:SVG.flower, name:'Bunga',   w:15, m3:8,   m5:40  },
+  { id:'turtle', svg:SVG.turtle, name:'Kura',    w:20, m3:5,   m5:25  },
+  { id:'tiki',   svg:SVG.tiki,   name:'Tiki',    w:25, m3:4,   m5:18  },
+  { id:'a',      svg:SVG.a,      name:'Huruf A', w:35, m3:3,   m5:12  },
+  { id:'k',      svg:SVG.k,      name:'Huruf K', w:45, m3:2,   m5:8   },
+  { id:'fire',   svg:SVG.fire,   name:'Api',     w:50, m3:1,   m5:4   },
+];
+const N = SYMS.length;
+
+// Bet: min 1000, steps 1000
+let bet = 10000;
+const BET_MIN = 1000, BET_MAX = 200000, BET_STEP = 1000;
+
+let balance = 0, spinning = false;
+let fastMode = false, autoMode = false, autoTimer = null;
+let soundOn = true, audioCtx = null;
+let histArr = [];
+let jpPct = 0;
+
+const fmtN = n=>{
+  if(n>=1e9) return (n/1e9).toFixed(1).replace(/\.0$/,'')+'B';
+  if(n>=1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M';
+  if(n>=1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'')+'K';
+  return String(n);
+};
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+const params = new URLSearchParams(location.search);
+const TOKEN  = params.get('token')||'';
+const ROOM   = params.get('roomId')||'';
+
+function api(path,opts={}){
+  const h={'Content-Type':'application/json'};
+  if(TOKEN) h['Authorization']='Bearer '+TOKEN;
+  return fetch(path,{...opts,headers:{...h,...(opts.headers||{})}});
+}
+async function loadBal(){
+  try{
+    const r=await api('/api/games/grady/balance');
+    const d=await r.json();
+    balance=Number(d.balance||0);
+  }catch{}
+}
+
+// ─── Bet adjust ───────────────────────────────────────────────────────────────
+function adjBet(dir){
+  if(spinning) return;
+  bet = Math.max(BET_MIN, Math.min(BET_MAX, bet + dir*BET_STEP));
+  refreshUI();
+  ensureAudio();
+}
+function refreshUI(){
+  document.getElementById('bet-disp').textContent = fmtN(bet);
+  document.getElementById('coin-val').textContent  = Math.round(bet/1000);
+}
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+function ensureAudio(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+}
+let spinTick=null;
+function startSpinSnd(){
+  if(!soundOn) return; ensureAudio(); stopSpinSnd();
+  const iv = fastMode ? 30 : 55;
+  (function tick(){
+    if(!spinning) return;
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=160+Math.random()*80;
+    const t=audioCtx.currentTime;
+    g.gain.setValueAtTime(0.1,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.025);
+    o.start(t);o.stop(t+0.03);
+    spinTick=setTimeout(tick,iv);
+  })();
+}
+function stopSpinSnd(){clearTimeout(spinTick);spinTick=null;}
+function playWin(big){
+  if(!soundOn) return; ensureAudio();
+  const freqs=big?[523,659,784,1047,1319]:[523,659,784];
+  const t=audioCtx.currentTime;
+  freqs.forEach((f,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=f;o.type='sine';
+    const t0=t+i*0.11;
+    g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(0.25,t0+0.04);g.gain.exponentialRampToValueAtTime(0.001,t0+0.22);
+    o.start(t0);o.stop(t0+0.26);
+  });
+}
+function toggleVol(){soundOn=!soundOn;document.getElementById('vol-btn').textContent=soundOn?'🔊':'🔇';}
+
+// ─── Build Reels ──────────────────────────────────────────────────────────────
+let CELL=68;
+const LOOPS=4;
+
+function symCell(symIdx){
+  const div=document.createElement('div');
+  div.className='sym-cell';
+  div.style.height=CELL+'px';
+  div.innerHTML=SYMS[symIdx].svg;
+  return div;
+}
+
+function buildReels(){
+  const grid=document.getElementById('reels-grid');
+  const availH=grid.parentElement.parentElement.clientHeight-18;
+  CELL=Math.max(52,Math.min(85, Math.floor(availH/3)));
+  grid.innerHTML='';
+
+  for(let c=0;c<5;c++){
+    const reel=document.createElement('div');
+    reel.className='reel'; reel.id='reel'+c;
+    reel.style.height=(CELL*3)+'px';
+
+    const strip=document.createElement('div');
+    strip.className='reel-strip'; strip.id='strip'+c;
+    const loopH=N*CELL;
+    strip.style.setProperty('--sdur', fastMode?'0.09s':'0.12s');
+    strip.style.setProperty('--sloop', '-'+loopH+'px');
+
+    // LOOPS full copies
+    for(let lp=0;lp<LOOPS;lp++){
+      for(let i=0;i<N;i++) strip.appendChild(symCell(i));
+    }
+    reel.appendChild(strip);
+    grid.appendChild(reel);
+  }
+
+  // Position payline over middle row
+  const pl=document.getElementById('payline');
+  pl.style.top=(CELL)+'px';
+  pl.style.height=CELL+'px';
+}
+
+// ─── Reel animation ───────────────────────────────────────────────────────────
+const sTos=[];
+function startReel(c){
+  clearTimeout(sTos[c]);
+  const s=document.getElementById('strip'+c);
+  s.style.transition='none';
+  s.style.transform='translateZ(0) translateY(0)';
+  s.getBoundingClientRect();
+  s.classList.add('spinning');
+}
+function settleReel(c, midSym, delay, onDone){
+  clearTimeout(sTos[c]);
+  sTos[c]=setTimeout(()=>{
+    const s=document.getElementById('strip'+c);
+    const cur=getComputedStyle(s).transform;
+    s.classList.remove('spinning');
+    s.style.transition='none';
+    s.style.transform=cur;
+    s.getBoundingClientRect();
+
+    // Target: 2nd loop, show topSym/midSym/botSym
+    const topSym=(midSym-1+N)%N;
+    const loopBase=N*CELL; // start of 2nd loop
+    const targetY=-(loopBase+topSym*CELL);
+    const startY=targetY-2*CELL;
+
+    s.style.transform='translateZ(0) translateY('+startY+'px)';
+    s.getBoundingClientRect();
+    const dur=fastMode?240:520;
+    s.style.transition=`transform ${dur}ms cubic-bezier(0.1,0.86,0.26,1.03)`;
+    s.style.transform='translateZ(0) translateY('+targetY+'px)';
+
+    sTos[c]=setTimeout(()=>{
+      s.style.transition='none';
+      s.style.transform='translateZ(0) translateY('+targetY+'px)';
+      document.getElementById('reel'+c).classList.remove('reel-spinning');
+      if(onDone) onDone();
+    }, dur+60);
+  }, delay);
+}
+
+// ─── Spin ─────────────────────────────────────────────────────────────────────
+async function doSpin(){
+  if(spinning) return;
+  if(balance<bet){toast('Koin tidak cukup!');if(autoMode){autoMode=false;updateAutoUI();}return;}
+
+  spinning=true;
+  document.getElementById('spin-btn').disabled=true;
+  document.getElementById('win-disp').textContent='0';
+  for(let c=0;c<5;c++) document.getElementById('reel'+c).classList.remove('win-flash');
+  ensureAudio(); startSpinSnd();
+  balance-=bet; refreshUI();
+  for(let c=0;c<5;c++) startReel(c);
+
+  try{
+    const body={bet,roomId:ROOM||undefined};
+    const res=await api('/api/games/lavaslot/spin',{method:'POST',body:JSON.stringify(body)});
+    const d=await res.json();
+
+    if(!res.ok){
+      balance+=bet;refreshUI();stopSpinSnd();
+      for(let c=0;c<5;c++) document.getElementById('strip'+c).classList.remove('spinning');
+      toast(d.error||'Error');doneSpin();return;
+    }
+
+    const stagger=fastMode?100:220;
+    let done=0;
+    function reelDone(){
+      if(++done<5) return;
+      stopSpinSnd();
+      balance=d.newBalance; refreshUI();
+      document.getElementById('win-disp').textContent=d.winAmount>0?fmtN(d.winAmount):'0';
+      if(d.winAmount>0){
+        for(let c=0;c<d.winCount;c++) document.getElementById('reel'+c).classList.add('win-flash');
+        playWin(d.winAmount>=bet*10);
+        histArr.unshift({midRow:d.midRow,count:d.winCount,win:d.winAmount,bet});
+        if(histArr.length>20) histArr.pop();
+        if(d.winAmount>=bet*5) setTimeout(()=>showWin(d),450);
+        else setTimeout(doneSpin,600);
+        if(d.winAmount>=100000) launchConf();
+        jpPct=Math.min(100,jpPct+d.winAmount/500000*8);
+        document.getElementById('jp-bar').style.width=jpPct+'%';
+        document.getElementById('jp-pct').textContent=jpPct.toFixed(0)+'%';
+      }else{
+        histArr.unshift({midRow:d.midRow,count:0,win:0,bet});
+        if(histArr.length>20) histArr.pop();
+        doneSpin();
+      }
+    }
+    for(let c=0;c<5;c++) settleReel(c,d.midRow[c],c*stagger,reelDone);
+  }catch{
+    balance+=bet;refreshUI();stopSpinSnd();
+    for(let c=0;c<5;c++) document.getElementById('strip'+c).classList.remove('spinning');
+    toast('Koneksi error');doneSpin();
+  }
+}
+function doneSpin(){
+  spinning=false;
+  document.getElementById('spin-btn').disabled=false;
+  if(autoMode) autoTimer=setTimeout(()=>{if(autoMode&&!spinning)doSpin();},700);
+}
+
+// ─── Modes ────────────────────────────────────────────────────────────────────
+function toggleFast(){
+  fastMode=!fastMode;
+  document.getElementById('fast-dot').classList.toggle('on',fastMode);
+  document.getElementById('fast-btn').classList.toggle('on',fastMode);
+  document.querySelectorAll('.reel-strip').forEach(s=>s.style.setProperty('--sdur',fastMode?'0.09s':'0.12s'));
+}
+function toggleAuto(){
+  autoMode=!autoMode; updateAutoUI();
+  if(autoMode&&!spinning) doSpin();
+  else clearTimeout(autoTimer);
+}
+function updateAutoUI(){
+  document.getElementById('auto-dot').classList.toggle('on',autoMode);
+  document.getElementById('auto-btn').classList.toggle('on',autoMode);
+  document.getElementById('spin-btn').classList.toggle('auto-on',autoMode);
+}
+
+// ─── Win popup ────────────────────────────────────────────────────────────────
+function showWin(d){
+  const html=d.midRow.slice(0,d.winCount).map(i=>`<div class="ws">${SYMS[i].svg}</div>`).join('');
+  document.getElementById('wp-syms').innerHTML=html;
+  document.getElementById('wp-count').textContent=d.winCount+' Cocok! ×'+d.multiplier;
+  document.getElementById('wp-amt').textContent='+'+fmtN(d.winAmount);
+  document.getElementById('winpop').classList.add('show');
+}
+function closeWin(){document.getElementById('winpop').classList.remove('show');doneSpin();}
+
+// ─── Paytable ─────────────────────────────────────────────────────────────────
+function openPT(){
+  let h='';
+  SYMS.forEach(s=>{
+    h+=`<div class="pt-row">
+      <div class="pt-sym">${s.svg}</div>
+      <div class="pt-name">${s.name}</div>
+      <div class="pt-x3">×${s.m3}=${fmtN(bet*s.m3)}</div>
+      <div class="pt-x5">×${s.m5}=${fmtN(bet*s.m5)}</div>
+    </div>`;
+  });
+  document.getElementById('pt-rows').innerHTML=h;
+  document.getElementById('pt-ov').classList.add('show');
+}
+function closePT(){document.getElementById('pt-ov').classList.remove('show');}
+
+// ─── History ──────────────────────────────────────────────────────────────────
+function openHist(){
+  if(!histArr.length){
+    document.getElementById('hist-rows').innerHTML='<div style="color:rgba(255,255,255,0.35);text-align:center;padding:20px">Belum ada riwayat</div>';
+  }else{
+    let h='';
+    histArr.forEach(r=>{
+      const syms=r.midRow.slice(0,5).map(i=>`<div class="hs">${SYMS[i].svg}</div>`).join('');
+      const net=r.win>0?'+'+fmtN(r.win-r.bet):(r.win===0?'-'+fmtN(r.bet):'0');
+      const cls=r.win>0?'hpos':'hneg';
+      h+=`<div class="hist-item">
+        <div class="hist-syms">${syms}</div>
+        <div class="hist-info">${r.count>=3?r.count+' cocok':'Tidak menang'}</div>
+        <div class="hist-net ${cls}">${net}</div>
+      </div>`;
+    });
+    document.getElementById('hist-rows').innerHTML=h;
+  }
+  document.getElementById('hist-ov').classList.add('show');
+}
+function closeHist(){document.getElementById('hist-ov').classList.remove('show');}
+
+// ─── Confetti ─────────────────────────────────────────────────────────────────
+function launchConf(){
+  const cv=document.getElementById('conf-cv');
+  cv.width=innerWidth;cv.height=innerHeight;
+  let pts=Array.from({length:75},()=>({x:Math.random()*cv.width,y:-10,vx:(Math.random()-0.5)*5,vy:Math.random()*5+2,c:['#FFD700','#ff6600','#ff3399','#00aaff','#66ff44'][Math.floor(Math.random()*5)],r:Math.random()*6+3}));
+  (function af(){
+    const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);
+    pts=pts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.06;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();return p.y<cv.height+20;});
+    if(pts.length) requestAnimationFrame(af);else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2400);
+}
+
+// ─── Loading ──────────────────────────────────────────────────────────────────
+function runLoader(){
+  const bar=document.getElementById('load-bar'), pct=document.getElementById('load-pct');
+  let p=0;
+  const iv=setInterval(()=>{
+    p=Math.min(100,p+(p<70?Math.random()*7+3:Math.random()*2+0.4));
+    bar.style.width=p+'%';pct.textContent=Math.floor(p)+'%';
+    if(p>=100){clearInterval(iv);setTimeout(launchGame,350);}
+  },80);
+}
+async function launchGame(){
+  document.getElementById('screen-load').style.display='none';
+  const sg=document.getElementById('screen-game');
+  sg.style.display='flex';sg.style.flexDirection='column';
+  buildReels();
+  await loadBal();
+  refreshUI();
+}
+
+window.addEventListener('load',runLoader);
+</script>
+</body>
+</html>

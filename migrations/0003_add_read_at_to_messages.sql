@@ -1,0 +1,3 @@
+ALTER TABLE conversation_messages 
+ADD COLUMN IF NOT EXISTS read_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS read_by TEXT;
